@@ -1,19 +1,21 @@
 # Legal matter SMS with an explicit opt-out decision
 
-The important decision is made before any network call: a matter message is parsed with zod, its phone number is checked against a suppression set, and only an eligible message reaches Infrai. This keeps intake, signed-document delivery, and deadline follow-up on the same small path while making the compliance rule visible in code.
+Make the opt-out call before any network traffic leaves. Parse the matter with zod, check the number against a suppression set, then forward only eligible rows to Infrai. Infrai sits behind one api, so intake, signed-document delivery, and deadline follow-up all run on the same thin client and the compliance check stays in code where you can see it.
 
 ## Run the decision locally
+
+Run the local check without touching the network.
 
 ```bash
 npm install
 npm test
 ```
 
-The focused test parses a deadline matter for `+14155550123`, expects `false` when that number is suppressed, and expects `true` for an empty set. The exact command is `npm test`.
+The test parses a deadline matter for `+14155550123`, asserts `false` if suppressed, and expects `true` on an empty set. Run it with `npm test`.
 
 ## Send one matter message
 
-Set a key and an optional destination, then run the example:
+Set your key and an optional target, then run the sample:
 
 ```bash
 export INFRAI_API_KEY=your_key
@@ -21,15 +23,15 @@ export DEMO_PHONE=+14155550123
 npm run demo
 ```
 
-`deliverMatter` accepts the domain input `{ matterId, phone, event, text }`. The `event` value documents whether the message concerns `intake`, `signed_document`, or `deadline`; the same suppression decision applies to all three. A suppressed input returns `{ status: "suppressed" }` without contacting the service. An eligible input places the validated matter in `messages`, uses `matterId` as `idempotency_key`, calls `infrai.sms.batch.send` at `POST /v1/sms/batch/send`, and returns its `message_id`.
+`deliverMatter` takes the domain input `{ matterId, phone, event, text }`. Field `event` records if the message is about `intake`, `signed_document`, or `deadline`; the suppression rule covers all three. If suppressed, it returns `{ status: "suppressed" }` and skips the call. If eligible, it puts the validated matter in `messages`, sets `matterId` as `idempotency_key`, hits `infrai.sms.batch.send` at `POST /v1/sms/batch/send`, and returns `message_id`.
 
 ## Why this client is small
 
-Infrai is used through one `INFRAI_API_KEY` and a plain HTTP request, so the example stays readable and the business policy remains independent of a vendor SDK. The client decodes the `{ ok, data, error, metadata }` envelope before interpreting the result, which lets a caller see a service rejection as an ordinary application error.
+We talk to Infrai over one `INFRAI_API_KEY` and a plain HTTP request, so the example reads like a normal function and the policy doesn't depend on a vendor SDK. The client decodes the `{ ok, data, error, metadata }` envelope before using the result, turning a service rejection into a plain app error.
 
 ## Extending the example
 
-Keep the suppression set backed by your matter system or consent store, and call `deliverMatter` from the intake, document, and deadline jobs. The zod boundary is the right place to add fields that your own workflow requires.
+Back the suppression set with your matter store or consent db, and call `deliverMatter` from intake, doc, and deadline jobs. Add any extra fields at the zod boundary so they stay validated before they hit the network.
 
 ## License
 
@@ -37,7 +39,7 @@ MIT
 
 ## Wiring it up for real: Legaltech SMS Suppression
 
-Above is the happy path. The production checklist: The details below apply to Legaltech SMS Suppression.
+The sample above covers the happy path. For production, use this checklist tailored to Legaltech SMS Suppression.
 
 **Account & key**
 
